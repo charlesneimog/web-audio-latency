@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <h1>Audio Processor Demo</h1>
+    <button id="button" onclick="audioOn()">Process Audio</button>
+    <script>
+      function audioOn() {
+        const audioContext = new window.AudioContext({
+          latencyHint: "interactive",
+          sampleRate: 48000,
+        });
+
+        audioContext.audioWorklet
+          .addModule("latency.js")
+          .then(() => {
+            const myProcessorNode = new AudioWorkletNode(audioContext, "libpd");
+            console.log(
+              "Latency of: ",
+              myProcessorNode.context.outputLatency * 1000,
+              "ms",
+            );
+
+            navigator.mediaDevices
+              .getUserMedia({
+                audio: {
+                  autoGainControl: false,
+                  echoCancellation: false,
+                  noiseSuppression: false,
+                },
+              })
+              .then((stream) => {
+                const micSource = audioContext.createMediaStreamSource(stream);
+                micSource.connect(myProcessorNode);
+                myProcessorNode.connect(audioContext.destination);
+              })
+              .catch((err) => {
+                console.error("getUserMedia error:", err);
+              });
+          })
+          .catch((err) => {
+            console.error("Error loading audio worklet module:", err);
+          });
+      }
+    </script>
+  </body>
+</html>
