@@ -1,45 +1,32 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sample Rate e Tamanho do Canal</title>
+  </head>
   <body>
-    <h1>Audio Processor Demo</h1>
-    <button id="button" onclick="audioOn()">Process Audio</button>
+    <h1>Informações do AudioWorklet</h1>
+    <p id="sampleRate"></p>
+    <p id="channelSize"></p>
+    <buttom onclick="initAudio()">Iniciar</buttom>
+
     <script>
-      function audioOn() {
-        const audioContext = new window.AudioContext({
-          latencyHint: "interactive",
-          sampleRate: 48000,
-        });
+      async function initAudio() {
+        const audioContext = new AudioContext();
+        document.getElementById("sampleRate").innerText =
+          "Sample Rate: " + audioContext.sampleRate;
+        await audioContext.audioWorklet.addModule("processor.js");
+        const oscillator = audioContext.createOscillator();
+        const workletNode = new AudioWorkletNode(audioContext, "my-processor");
+        oscillator.connect(workletNode);
+        workletNode.connect(audioContext.destination);
+        oscillator.start();
 
-        audioContext.audioWorklet
-          .addModule("latency.js")
-          .then(() => {
-            const myProcessorNode = new AudioWorkletNode(audioContext, "libpd");
-            console.log(
-              "Latency of: ",
-              myProcessorNode.context.outputLatency * 1000,
-              "ms",
-            );
-
-            navigator.mediaDevices
-              .getUserMedia({
-                audio: {
-                  autoGainControl: false,
-                  echoCancellation: false,
-                  noiseSuppression: false,
-                },
-              })
-              .then((stream) => {
-                const micSource = audioContext.createMediaStreamSource(stream);
-                micSource.connect(myProcessorNode);
-                myProcessorNode.connect(audioContext.destination);
-              })
-              .catch((err) => {
-                console.error("getUserMedia error:", err);
-              });
-          })
-          .catch((err) => {
-            console.error("Error loading audio worklet module:", err);
-          });
+        const latency1 = audioContext.outputLatency;
+        console.log(`Output Latency: ${latency1} seconds`);
+        const outputTimestamp = audioContext.getOutputTimestamp();
+        const latency2 = performance.now() - outputTimestamp.performanceTime;
+        console.log(`Measured Latency: ${latency2} milliseconds`);
       }
     </script>
   </body>
